@@ -9718,7 +9718,14 @@ function Chat({
         },
         npc: nm
       };
-    return { who: identity, charId: speakingChar?.id ?? (panelPinned ? "owner" : void 0) };
+    const fresh = speakingChar ? useCharacterStore.getState().characters[speakingChar.id] ?? speakingChar : void 0;
+    const who = fresh ? {
+      ...identity,
+      avatar: activeHeadshot(fresh.portrait) ?? "",
+      standing: activeStanding({ standings: fresh.portrait.standings, currentExpression: fresh.portrait.currentExpression, visibility: fresh.visibility }),
+      standingHeight: fresh.portrait.standingHeight
+    } : identity;
+    return { who, charId: speakingChar?.id ?? (panelPinned ? "owner" : void 0) };
   }
   function submit(over) {
     const source = over ? over.text : input;

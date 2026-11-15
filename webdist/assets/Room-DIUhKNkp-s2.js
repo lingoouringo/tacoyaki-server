@@ -3291,10 +3291,13 @@ function MapStage({ onTokenContextMenu, onMapContextMenu }) {
     if (!token.charPlayerId) return void 0;
     const isStanding = (token.layer ?? "token") === "standing" || token.liveStanding;
     if (!isStanding) return void 0;
+    const sameChar = token.charId ? ch?.charId === token.charId : (ch?.name ?? "") === (token.label ?? "");
+    if (token.liveStanding && ch && sameChar) {
+      const live = activeStanding(ch);
+      if (live) return live;
+    }
     const spoken = latest.current.spokenByChar.get(token.charPlayerId + " " + (token.label ?? ""));
     if (spoken) return spoken;
-    const sameChar = token.charId ? ch?.charId === token.charId : (ch?.name ?? "") === (token.label ?? "");
-    if (token.liveStanding && ch && sameChar) return activeStanding(ch);
     return void 0;
   }
   function loadGif(url) {
