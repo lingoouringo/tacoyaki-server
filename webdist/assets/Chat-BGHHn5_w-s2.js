@@ -2805,6 +2805,35 @@ const COC_CHARS = [
   { key: "POW", label: "정신력" },
   { key: "EDU", label: "교육" }
 ];
+function StBuf({ value, onCommit, tag, ...rest }) {
+  const [v, setV] = reactExports.useState(value ?? "");
+  const last = reactExports.useRef(value ?? "");
+  const dirty = reactExports.useRef(false);
+  const timer = reactExports.useRef(null);
+  const cb = reactExports.useRef(onCommit);
+  cb.current = onCommit;
+  const vr = reactExports.useRef(v);
+  reactExports.useEffect(() => {
+    const nv = value ?? "";
+    if (!dirty.current && nv !== last.current) { setV(nv); vr.current = nv; }
+    last.current = nv;
+  }, [value]);
+  const commit = () => {
+    clearTimeout(timer.current);
+    if (!dirty.current) return;
+    dirty.current = false;
+    last.current = vr.current;
+    cb.current(vr.current);
+  };
+  reactExports.useEffect(() => () => commit(), []);
+  return jsxRuntimeExports.jsx(tag ?? "input", { ...rest, value: v, onBlur: commit, onChange: (e) => {
+    vr.current = e.target.value;
+    setV(e.target.value);
+    dirty.current = true;
+    clearTimeout(timer.current);
+    timer.current = setTimeout(commit, 700);
+  } });
+}
 function stCalcSkills(c, ruleset) {
   const ins = c.extra?.insane ?? {};
   const nf = ruleset?.skillGrid?.fields?.length ?? 0, rows = ruleset?.skillGrid?.rows ?? 11;
@@ -5557,7 +5586,7 @@ function InsaneSheet({
       if (foreignEdit) applyEx(next);
       else upsertCharacter(next);
     };
-    const txt = (value, onChange, placeholder, extra, list) => h("input", { className: "input sm", value: value ?? "", placeholder, readOnly: !editing, list, onChange: (e) => onChange(e.target.value), style: { ...bare, ...extra } });
+    const txt = (value, onChange, placeholder, extra, list) => h(StBuf, { className: "input sm", value: value ?? "", placeholder, readOnly: !editing, list, onCommit: (val) => onChange(val), style: { ...bare, ...extra } });
     const num = (value, onChange) => h("input", { className: "input sm", type: "number", min: 0, value: value ?? "", readOnly: ro, onChange: (e) => onChange(e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value, 10) || 0)), style: { ...bare, textAlign: "right" } });
     const row = (label, ctl, key, first, w) => hs("div", { style: { display: "grid", gridTemplateColumns: (w || 70) + "px 1fr", borderTop: first ? 0 : BORDER }, children: [
       h("div", { style: { ...HEAD, display: "flex", alignItems: "center", justifyContent: "center" }, children: label }),
@@ -5565,7 +5594,7 @@ function InsaneSheet({
     ] }, key);
     const frame = (children, key, extra) => hs("div", { style: { border: BORDER, borderRadius: 4, overflow: "hidden", minWidth: 0, ...extra }, children }, key);
     const box = (title, body, key) => frame([h("div", { style: { ...HEAD, borderBottom: BORDER }, children: title }, "h"), body], key, { display: "flex", flexDirection: "column" });
-    const area = (value, onChange, placeholder, rows) => h("textarea", { className: "input", rows, value: value ?? "", placeholder, readOnly: !editing, onChange: (e) => onChange(e.target.value), style: { ...bare, resize: "none", textAlign: "left", fontFamily: "inherit", letterSpacing: "normal", wordSpacing: "normal", fontSize: 12, lineHeight: 1.5, flex: 1 } });
+    const area = (value, onChange, placeholder, rows) => h(StBuf, { tag: "textarea", className: "input", rows, value: value ?? "", placeholder, readOnly: !editing, onCommit: (val) => onChange(val), style: { ...bare, resize: "none", textAlign: "left", fontFamily: "inherit", letterSpacing: "normal", wordSpacing: "normal", fontSize: 12, lineHeight: 1.5, flex: 1 } });
 
     const quote = h("div", { style: { borderLeft: "4px solid var(--sheet)", background: "color-mix(in srgb, var(--sheet) 8%, transparent)", padding: "10px 14px", marginBottom: 12 }, children:
       h("input", { className: "input", value: ins.catchphrase ?? "", placeholder: "“캐릭터 한마디”", readOnly: !editing, onChange: (e) => setIns({ catchphrase: e.target.value }), style: { border: 0, background: "transparent", boxShadow: "none", width: "100%", fontSize: 18, fontWeight: 800, padding: 0 } }) });
@@ -5673,7 +5702,7 @@ function InsaneSheet({
       return null;
     };
     const sec = (id, title, items) => h("div", { className: "secgroup", ref: stRefs[id], "data-sec": id, style: { display: scrollView ? void 0 : "none" }, children: hs("div", { className: "cocsec", children: [h("div", { className: "cocsec-t", children: title }, "t"), ...items] }) }, id);
-    const page = (id, title, items) => h("div", { className: "secgroup", "data-sec": id, style: { display: stTab === id ? void 0 : "none" }, children: hs("div", { className: "cocsec", children: [h("div", { className: "cocsec-t", children: title }, "t"), ...items] }) }, id);
+    const page = (id, title, items) => h("div", { className: "secgroup", "data-sec": id, style: { display: stTab === id ? void 0 : "none" }, children: stTab === id ? hs("div", { className: "cocsec", children: [h("div", { className: "cocsec-t", children: title }, "t"), ...items] }) : null }, id);
 
     const metaParts = [ins.inst, ins.band, character.info.age, character.info.gender].map((x) => String(x ?? "").trim()).filter(Boolean);
     const head = hs("div", { className: "sheet-head", children: [
@@ -5704,7 +5733,7 @@ function InsaneSheet({
     ] });
     const notes = hs("div", { style: { display: "flex", flexDirection: "column", gap: 8, marginTop: 14 }, children: [["setting", "캐릭터 설정"], ["etc", "기타 사항"]].map(([k, label]) => hs("label", { style: { display: "flex", flexDirection: "column", gap: 3 }, children: [
       h("span", { className: "muted small", children: label }),
-      h("textarea", { className: "input", rows: 2, value: ins[k] ?? "", readOnly: ro, onChange: (e) => setIns({ [k]: e.target.value }), style: { resize: "vertical" } })
+      h(StBuf, { tag: "textarea", className: "input", rows: 2, value: ins[k] ?? "", readOnly: ro, onCommit: (val) => setIns({ [k]: val }), style: { resize: "vertical" } })
     ] }, k)) });
 
     // ── 표(인연·스킬)
@@ -5717,7 +5746,7 @@ function InsaneSheet({
           h("span", { style: { width: extra ? 64 : 28 } }, "sp")
         ] }, "hd") : h("div", { className: "muted small", children: "항목이 없습니다." }, "hd"),
         ...rowsData.map((row, i) => hs("div", { style: { display: "flex", gap: 4, alignItems: "center" }, children: [
-          ...cols.map(([k, label, flex]) => h("input", { className: "input sm", value: row[k] ?? "", placeholder: label, readOnly: ro, onChange: (e) => set(rowsData.map((x, j) => j === i ? { ...x, [k]: e.target.value } : x)), style: { flex: flex ?? 1, minWidth: 0 } }, k)),
+          ...cols.map(([k, label, flex]) => h(StBuf, { className: "input sm", value: row[k] ?? "", placeholder: label, readOnly: ro, onCommit: (val) => set(rowsData.map((x, j) => j === i ? { ...x, [k]: val } : x)), style: { flex: flex ?? 1, minWidth: 0 } }, k)),
           extra ? extra(row, i) : null,
           !ro ? h("button", { className: "iconbtn", title: "삭제", onClick: () => set(rowsData.filter((_, j) => j !== i)), children: h(Icon, { name: "close", size: 13 }) }, "del") : null
         ] }, "r" + i)),
@@ -5771,7 +5800,7 @@ function InsaneSheet({
         chip(title, { fontWeight: 700, flex: "0 0 96px" }),
         chip("라이브", { flex: "0 0 80px" }),
         chip(effect, { flex: 1, fontSize: 12.5, lineHeight: 1.45 }),
-        h("input", { className: "input sm", value: combatSkill[k] ?? "", placeholder: "지정특기", readOnly: ro, list: "st-skill-names", onChange: (e) => setCombatSkill(k, e.target.value), style: { flex: "0 0 110px", minWidth: 0, textAlign: "center", background: "color-mix(in srgb, var(--sheet) 10%, rgba(128,128,128,.18))", border: 0, borderRadius: 6 } })
+        h(StBuf, { className: "input sm", value: combatSkill[k] ?? "", placeholder: "지정특기", readOnly: ro, list: "st-skill-names", onCommit: (val) => setCombatSkill(k, val), style: { flex: "0 0 110px", minWidth: 0, textAlign: "center", background: "color-mix(in srgb, var(--sheet) 10%, rgba(128,128,128,.18))", border: 0, borderRadius: 6 } })
       ] }, k);
     };
     const phraseN = Math.max(1, Math.min(12, Number(ins.phraseCount ?? 3) || 3));
@@ -5799,8 +5828,8 @@ function InsaneSheet({
         h("button", { type: "button", className: "btn", disabled: ro || tgt == null, title: tgt == null ? "지정 특기를 특기표에 있는 이름으로 입력하세요" : `${p.skill} 판정(2d6≥${tgt})`, onClick: () => atk ? combatRoll("patk" + i, "프레이즈 공격", "", "대미지 주사위 결과", "프레이즈 공격 대미지", "0", true, p.skill, "2d6", p.lyric) : combatRoll("pheal" + i, "프레이즈 회복", "", "회복 주사위 결과", "프레이즈 회복 (컨디션 획득)", "2d6", false, p.skill, void 0, p.lyric), style: { width: 44, padding: 0, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 8 }, children: h(Icon, { name: "casino", size: 22 }) }),
         atk ? h("button", { type: "button", className: "btn", disabled: ro || tgt == null || !curBurstB, title: !curBurstB ? "정보란에서 악기를 먼저 선택하세요" : tgt == null ? "지정 특기를 특기표에 있는 이름으로 입력하세요" : `${curBurstB.name} 사용`, onClick: () => combatRoll("burst" + i, curBurstB.name, "", "대미지 주사위 결과", `${curBurstB.name} 대미지`, "0", true, p.skill, curBurstB.instrument === "기타" ? void 0 : curBurstB.instrument === "베이스" ? void 0 : "2d6", p.lyric, { ...burstExtra(curBurstB.instrument), burst: true }), style: { flex: "0 0 auto", padding: "0 10px", fontWeight: 800, fontSize: 12, borderRadius: 8 }, children: "버스트" }) : null,
         hs("select", { className: "input sm", value: atk ? "atk" : "heal", disabled: ro, onChange: (e) => setPhrase(i, { mode: e.target.value }), style: { flex: "0 0 84px", background: grey, border: 0, borderRadius: 6, fontWeight: 700 }, children: [h("option", { value: "atk", children: "공격" }), h("option", { value: "heal", children: "회복" })] }),
-        h("input", { className: "input sm", value: p.lyric, placeholder: "프레이즈 가사", readOnly: ro, onChange: (e) => setPhrase(i, { lyric: e.target.value }), style: { flex: 1, minWidth: 0, background: grey, border: 0, borderRadius: 6 } }),
-        h("input", { className: "input sm", value: p.skill, placeholder: "지정특기", readOnly: ro, list: "st-skill-names", onChange: (e) => setPhrase(i, { skill: e.target.value }), style: { flex: "0 0 110px", minWidth: 0, textAlign: "center", background: grey, border: 0, borderRadius: 6 } })
+        h(StBuf, { className: "input sm", value: p.lyric, placeholder: "프레이즈 가사", readOnly: ro, onCommit: (val) => setPhrase(i, { lyric: val }), style: { flex: 1, minWidth: 0, background: grey, border: 0, borderRadius: 6 } }),
+        h(StBuf, { className: "input sm", value: p.skill, placeholder: "지정특기", readOnly: ro, list: "st-skill-names", onCommit: (val) => setPhrase(i, { skill: val }), style: { flex: "0 0 110px", minWidth: 0, textAlign: "center", background: grey, border: 0, borderRadius: 6 } })
       ] }, "p" + i);
     };
     const combat = [
@@ -5819,7 +5848,7 @@ function InsaneSheet({
       hs("datalist", { id: "st-skill-names", children: namedSkills.map((s) => h("option", { value: s }, s)) }, "dl")
     ];
 
-    const secretArea = h("textarea", { className: "input", rows: 10, value: character.secret ?? "", readOnly: ro, onChange: (e) => updateSecret(e.target.value), style: { resize: "vertical", width: "100%" } }, "ta");
+    const secretArea = h(StBuf, { tag: "textarea", className: "input", rows: 10, value: character.secret ?? "", readOnly: ro, onCommit: (val) => updateSecret(val), style: { resize: "vertical", width: "100%" } }, "ta");
     const mbody = hs("div", { className: "mbody", ref: stMbody, onScroll, children: [
       sec("info", "정보", [stProfile, trackers]),
       sec("spec", "특기", [editing ? h("div", { className: "muted small", style: { marginBottom: 8 }, children: "칸에 특기명을 입력하고 ✓로 습득 표시" }, "hint") : null, stGridEl]),
@@ -7610,8 +7639,7 @@ function StSkillCard({ dice }) {
   const h = jsxRuntimeExports.jsx, hs = jsxRuntimeExports.jsxs;
   const c = dice.card;
   const chatRoll = useChatStore((s) => s.roll);
-  const nameColor = useUIStore((s) => s.nameColor);
-  const ch = useCharacterStore((s) => c.charId ? s.characters[c.charId] : void 0);
+  const hasChar = useCharacterStore((s) => !!(c.charId && s.characters[c.charId]));
   const [done, setDone] = reactExports.useState(false);
   const top = (eb) => hs("div", { className: "tkt-top", children: [h("i", { className: "tkt-star", children: "✦" }), eb ? h("span", { className: "tkt-eyebrow", children: eb }) : null] });
   const B = !!c.burst;
@@ -7627,6 +7655,8 @@ function StSkillCard({ dice }) {
   const j = dice.judge ?? {};
   const ok = j.level === "regular" || j.level === "critical";
   const press = async () => {
+    const ch = c.charId ? useCharacterStore.getState().characters[c.charId] : void 0;
+    const nameColor = useUIStore.getState().nameColor;
     if (done || !ch) return;
     let expr = c.dmgExpr;
     let spend = 0;
@@ -7677,7 +7707,7 @@ function StSkillCard({ dice }) {
         dice.rolls && dice.rolls.length ? ` · [${dice.rolls.join(" + ")}]` : "",
         c.cond > 0 ? ` +${c.cond}` : ""
       ] }),
-      ok ? h("button", { type: "button", disabled: done || !ch, onClick: press, title: ch ? void 0 : "이 캐릭터의 주인만 굴릴 수 있습니다", style: { marginTop: 8, width: "100%", border: 0, borderRadius: 6, background: done || !ch ? "#9a9aa6" : "#e0457b", color: "#fff", fontWeight: 800, fontSize: 12.5, padding: "6px 10px", cursor: done || !ch ? "default" : "pointer" }, children: c.btn }) : null
+      ok ? h("button", { type: "button", disabled: done || !hasChar, onClick: press, title: hasChar ? void 0 : "이 캐릭터의 주인만 굴릴 수 있습니다", style: { marginTop: 8, width: "100%", border: 0, borderRadius: 6, background: done || !hasChar ? "#9a9aa6" : "#e0457b", color: "#fff", fontWeight: 800, fontSize: 12.5, padding: "6px 10px", cursor: done || !hasChar ? "default" : "pointer" }, children: c.btn }) : null
     ] })
   ] });
 }
@@ -9677,10 +9707,16 @@ function Chat({
     el.addEventListener("load", onLoad, true);
     return () => el.removeEventListener("load", onLoad, true);
   }, [scrollToBottom]);
+  const fitLenRef = reactExports.useRef(0);
+  const fitComposeRef = reactExports.useRef(-1);
   reactExports.useEffect(() => {
     const el = inputRef.current;
     if (!el) return;
-    const fit = () => {
+    const fit = (force) => {
+      const prevLen = fitLenRef.current;
+      fitLenRef.current = el.value.length;
+      if (force !== true && fitComposeRef.current === composeH && el.scrollHeight <= el.clientHeight && (el.clientHeight <= composeH + 2 || el.value.length >= prevLen)) return;
+      fitComposeRef.current = composeH;
       el.style.height = "auto";
       const bord = el.offsetHeight - el.clientHeight;
       const panel = el.closest(".chat");
@@ -9689,8 +9725,9 @@ function Chat({
     };
     fit();
     const w = el.ownerDocument.defaultView ?? window;
-    w.addEventListener("resize", fit);
-    return () => w.removeEventListener("resize", fit);
+    const onResize = () => fit(true);
+    w.addEventListener("resize", onResize);
+    return () => w.removeEventListener("resize", onResize);
   }, [input, composeH]);
   function noWhisperTarget() {
     if (activeChannel === "whisper" && !targetId) {

@@ -6759,7 +6759,7 @@ function NowPlayingBadge() {
     const id = setInterval(() => {
       const el = find();
       setHost((p) => p === el ? p : el);
-    }, 1000);
+    }, 2500);
     return () => clearInterval(id);
   }, []);
   const title = tracks.filter((t) => t.playing).map((t) => (t.title || "").trim()).filter(Boolean).join(" · ");
@@ -6779,7 +6779,7 @@ function NowPlayingBadge() {
   }, [title]);
   if (!host || !title || phase === "off") return null;
   return reactDomExports.createPortal(
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { key: title, className: "np-badge", style: { position: "absolute", top: 12, right: 12, zIndex: 6, maxWidth: "min(70%, 420px)", pointerEvents: "none", display: "flex", alignItems: "center", gap: 8, padding: "6px 14px 6px 10px", borderRadius: 999, background: "rgba(10,10,16,.62)", backdropFilter: "blur(6px)", color: "#fff", fontSize: 13, lineHeight: 1.3, boxShadow: "0 2px 10px rgba(0,0,0,.35)", animation: phase === "out" ? "npOut .6s ease-in forwards" : "npIn .6s ease-out" }, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { key: title, className: "np-badge", style: { position: "absolute", top: 12, right: 12, zIndex: 6, maxWidth: "min(70%, 420px)", pointerEvents: "none", display: "flex", alignItems: "center", gap: 8, padding: "6px 14px 6px 10px", borderRadius: 999, background: "rgba(10,10,16,.8)", willChange: "transform, opacity", contain: "layout paint", color: "#fff", fontSize: 13, lineHeight: 1.3, boxShadow: "0 2px 10px rgba(0,0,0,.35)", animation: phase === "out" ? "npOut .6s ease-in forwards" : "npIn .6s ease-out" }, children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("style", { children: "@keyframes npIn{from{opacity:0;transform:translateX(48px)}to{opacity:1;transform:none}}@keyframes npOut{from{opacity:1;transform:none}to{opacity:0;transform:translateX(48px)}}@keyframes npBar{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1)}}" }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("span", { "aria-hidden": true, style: { display: "inline-flex", alignItems: "flex-end", gap: 2, height: 14, flex: "none" }, children: [0, 1, 2].map((i) => /* @__PURE__ */ jsxRuntimeExports.jsx("i", { style: { width: 3, height: "100%", background: "var(--accent)", borderRadius: 1, transformOrigin: "bottom", animation: `npBar ${0.8 + i * 0.25}s ease-in-out infinite` } }, i)) }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: [
